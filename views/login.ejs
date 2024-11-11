@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TodoList</title>
+	<link rel="stylesheet" type="text/css" href="/reset.css">
+	<link rel="stylesheet" type="text/css" href="/style.css">
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+</head>
+<body>
+    <section class="login_sec user_content">
+        <div class="inner_sec">
+            <form action="/login" method="post">
+                <p>Login</p>
+                <label>
+                    아이디 <input type="text" name="userId" placeholder="최대 10자" required>
+                </label>
+                <label>
+                    비밀번호 
+                    <input type="password" name="userPw" maxlength="16" placeholder="최대 16자" required>
+                </label>
+                <div class="join_box">
+                    <a href="/join">회원가입</a>
+                </div>
+                <button type="submit">로그인</button>
+            </form>
+        </div>
+    </section>
+</body>
+</html>
