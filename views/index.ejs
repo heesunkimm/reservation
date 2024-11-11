@@ -7,12 +7,17 @@
 	<link rel="stylesheet" type="text/css" href="/reset.css">
 	<link rel="stylesheet" type="text/css" href="/style.css">
     <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+    <!-- iamport.payment.js -->
+    <script type="text/javascript" src="https://cdn.iamport.kr/js/iamport.payment-1.2.0.js"></script>
+	<!-- 포트원 라이브러리 추가 -->
+	<script src="https://cdn.iamport.kr/v1/iamport.js"></script>
 </head>
 <body>
     <header>
         <ul class="nav">
             <li><a href="javascript:;">예약하기</a></li>
             <li><a href="javascript:;">예약내역</a></li>
+            <li><a href="/logout">로그아웃</a></li>
         </ul>
     </header>
     <section class="index_sec content">
@@ -47,7 +52,7 @@
             <div class="submit_box">
                 <div class="reserve_box">
                     <p class="reserve_time">시간: <span></span></p>
-                    <p class="reserve_date">좌석: <span></span></p>
+                    <p class="reserve_seat">좌석: <span></span></p>
                 </div>
                 <button class="submitBtn" type="button">예약하기</button>
             </div>
@@ -55,6 +60,9 @@
 </body>
 <script>
     $(document).ready(function () {
+        const IMP = window.IMP;
+        IMP.init('imp82624668');
+
         // 시간 선택
         $(".timeBtn").on('click', function () {
             let selectedTime = $(this).data('time');
@@ -63,8 +71,18 @@
         // 좌석 선택
         $(".seatBtn").on('click', function () {
             let selectedSeat = $(this).data('seat');
-            $('.reserve_date span').text(selectedSeat);
+            $('.reserve_seat span').text(selectedSeat);
         });
+
+        // 결제 이벤트
+        $(".submitBtn").on('click', function () {
+            if($('.reserve_time span').text() === "") {
+                alert('시간을 선택해주세요.');
+            }else if($('.reserve_seat span').text() === "") {
+                alert("좌석을 선택해주세요.");
+            }
+
+        })
     });
 </script>
 </html>

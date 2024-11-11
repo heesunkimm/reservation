@@ -11,6 +11,12 @@ const { MongoClient } = require('mongodb')
 require('dotenv').config()
 // bcrypt 라이브러리 추가
 const bcrypt = require('bcrypt');
+// 아임포트 api 변수 선언
+const Iamport = require('iamport');
+const iamport = new Iamport({
+  impKey: process.env.IMPKEY,
+  impSecret: process.env.IMPSECRET
+});
 
 // CSS 연결
 app.use(express.static(__dirname + '/public'));
@@ -30,6 +36,14 @@ app.use(session({
     maxAge: 60 * 10 * 10
 }
 }))
+// 로그인 여부 확인
+function isAuthenticated(req, res, next) {
+    if (req.isAuthenticated()) {
+      next();
+    } else {
+      res.redirect('/');
+    }
+}
 // passport 라이브러리 설정
 app.use(passport.initialize());
 // 세션 저장
@@ -40,7 +54,7 @@ const url = process.env.DB_URL
 const { ObjectId } = require('mongodb');
 new MongoClient(url).connect().then((client)=>{
     console.log('DB연결성공')
-    db = client.db('todolist')
+    db = client.db('project')
     // 서버연결
     app.listen(process.env.PORT, () => {
     console.log('서버접속중');
@@ -57,7 +71,7 @@ passport.use(new LocalStrategy(
     },
     async (userId, userPw, cb) => {
     try{
-        let user = await db.collection('user').findOne({ userId : userId})
+        let user = await db.collection('users').findOne({ userId : userId})
 
         let comparePw = await bcrypt.compare(userPw, user.userPw);
 
@@ -80,7 +94,7 @@ passport.serializeUser(function(user, done) {
 // 페이지가 이동되어도 저장한 세션 정보 유지
 passport.deserializeUser(async function(id, done) {
     try {
-        let user = await db.collection('user').findOne({_id: new ObjectId(id)}); // 문자열 id를 ObjectId로 변환하여 조회
+        let user = await db.collection('users').findOne({_id: new ObjectId(id)}); // 문자열 id를 ObjectId로 변환하여 조회
         // user가 없을 경우
         if (!user) {
             return done(null, false);
@@ -133,12 +147,12 @@ app.post('/join', async (req, res) => {
         }else {
                 // 비밀번호 암호화
                 let userPw = bcrypt.hashSync(req.body.userPw, 10);
-                let idCheck = await db.collection('user').findOne({userId : req.body.userId});
+                let idCheck = await db.collection('users').findOne({userId : req.body.userId});
                 
                 if(idCheck) {
                     return res.send("<script>alert('이미 등록된 아이디입니다.'); history.back();</script>");
                 }else {
-                    await db.collection('user').insertOne({
+                    await db.collection('users').insertOne({
                         userName: req.body.userName, 
                         userId: req.body.userId, 
                         userPw: userPw
@@ -154,12 +168,6 @@ app.post('/join', async (req, res) => {
 // index
 app.get('/index', (req, res) => {
     res.render('index.ejs')
-});
-app.post('/reservation', (req,res) => {
-    try{
-    } catch(e){
-        console.log(e);
-    }
 });
 
 // logout
