@@ -1,14 +1,16 @@
 // express 라이브러리 변수선언
-const express = require('express')
+const express = require('express');
 // passport 회원가입 라이브러리 변수선언
-const session = require('express-session')
-const passport = require('passport')
-const LocalStrategy = require('passport-local')
-const app = express()
+const session = require('express-session');
+const passport = require('passport');
+const LocalStrategy = require('passport-local');
+// connect-mongo 추가
+const MongoStore = require('connect-mongo');
+const app = express();
 // 몽고 DB 라이브러리 변수선언
-const { MongoClient } = require('mongodb')
+const { MongoClient } = require('mongodb');
 // 환경변수 파일 사용하기위해 선언
-require('dotenv').config()
+require('dotenv').config();
 // bcrypt 라이브러리 추가
 const bcrypt = require('bcrypt');
 // 아임포트 api 변수 선언
@@ -28,14 +30,15 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 // 세션설정
 app.use(session({
-  secret: process.env.SECRET_KEY,
-  resave : false,
-  saveUninitialized : false,
-  cookie: { 
-    secure: false,
-    maxAge: 60 * 10 * 10
-}
-}))
+    secret: process.env.SECRET_KEY,
+    resave : false,
+    saveUninitialized : false,
+    store: MongoStore.create({mongoUrl: process.env.DB_URL}),
+    cookie: { 
+        secure: false,
+        maxAge: 1000 * 60 * 60 * 24, // 세션 쿠키의 유효시간 24시간
+    }
+}));
 // 로그인 여부 확인
 function isAuthenticated(req, res, next) {
     if (req.isAuthenticated()) {
@@ -166,8 +169,66 @@ app.post('/join', async (req, res) => {
 })
 
 // index
-app.get('/index', (req, res) => {
-    res.render('index.ejs')
+app.get('/index', async (req, res) => {
+    // 로그인유저 정보
+    let user = {
+        userId: req.user.userId,
+        userName: req.user.userName
+    }
+    // 결제내역조회
+    let allData = await db.collection('paymentdetails').find({}).toArray();
+    console.log(allData);
+    res.render('index.ejs', {user, allData})
+});
+// 예약전 좌석상태 확인
+app.get('/reservations', async (req, res) => {
+    try {
+        // DB에서 해당 시간과 좌석의 예약 상태를 조회
+        const userInfo = await db.collection('paymentdetails').findOne({
+            reservationTime: req.query.reservationTime,
+            reservationSeat: req.query.reservationSeat
+        });
+
+        if (!userInfo) {
+            // 예약 가능
+            res.json({available: true, message: '예약 가능'});
+        } else {
+            // 예약 불가
+            res.json({available: false, message: '이미 예약된 좌석입니다.'});
+        }
+    } catch (e) {
+        console.error(e);
+        res.status(500).json({available: false, message: '서버 오류가 발생했습니다.'});
+    }
+});
+// 결제
+app.post('/payments', async (req,res) => {
+    try{
+        // 결제내역 조회
+        let userInfo = await db.collection('paymentdetails').findOne({
+            reservationTime: req.body.reservationTime, 
+            reservationSeat: req.body.reservationSeat
+        });
+
+        if(!userInfo) {
+            // 예약가능
+            await db.collection('paymentdetails').insertOne({
+                userId: req.user.userId,
+                userName: req.user.userName,
+                reservationTime: req.body.reservationTime,
+                reservationSeat: req.body.reservationSeat,
+                reservationAmount: parseInt(req.body.reservationAmount),
+                reservationStatus: '예약완료'
+            })
+            res.json({success: true, message: '결제가 완료되었습니다.'});
+        }else {
+            // 예약불가
+            res.json({success: false, message: '이미 예약된 좌석입니다.'});
+        }
+    } catch(e){
+        console.log(e);
+        res.status(500).json({success: false, message: '서버 오류가 발생했습니다.'});
+    }
 });
 
 // logout
@@ -184,5 +245,6 @@ app.get('/logout', (req, res) => {
         });
     } catch(e){
         console.log(e);
+        res.status(500).json({success: false, message: '서버 오류가 발생했습니다.'});
     }
 })

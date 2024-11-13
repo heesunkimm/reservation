@@ -32,19 +32,41 @@
         </div>
         <div class="seat_box">
             <p>좌석표</p>
-            <% let rows = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H']; %>
-            <% let cols = 10; %>
-            <% let time = ['14:00', '16:00', '18:00']; %>
+            <%  
+                let rows = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'];
+                let cols = 10;
+                <!-- let time = ['14:00', '16:00', '18:00']; -->
+            %>
 
             <div class="time_box">
-                <% time.forEach(time => { %>
-                    <button class="timeBtn" type="button" data-time="<%= time %>" data-status=""><%= time %></button>
-                <% }) %>
+                    <button class="timeBtn" type="button" data-time="14:00">14:00</button>
             </div>
             
-            <% rows.forEach(row => { %>
+            <% rows.forEach(rows => { %>
                 <% for(let col = 1; col <= cols; col++) { %>
-                    <button class="seatBtn" type="button" data-seat="<%= row + col %>" data-status=""><%= row + col %></button>
+                    <% 
+                        let seatId = rows + col;
+                        let seatStatus = '예약가능';
+                        let price;
+
+                        if (['A', 'B'].includes(rows)) {
+                            price = 160000;
+                        }else if (['C', 'D'].includes(rows)) {
+                            price = 140000;
+                        }else if (['E', 'F'].includes(rows)) {
+                            price = 120000;
+                        }else {
+                            price = 100000;
+                        }
+
+                        // 좌석 결제상태
+                        allData.forEach(data => {
+                            if (data.reservationSeat === seatId && data.reservationStatus === '예약완료') {
+                                seatStatus = '예약완료';
+                            }
+                        });
+                    %>
+                    <button class="seatBtn" type="button" data-seat="<%= seatId %>" data-price="<%= price %>" data-status="<%= seatStatus %>"><%= seatId %></button>
                 <% } %>
                 <br/>
             <% }); %>
@@ -53,6 +75,7 @@
                 <div class="reserve_box">
                     <p class="reserve_time">시간: <span></span></p>
                     <p class="reserve_seat">좌석: <span></span></p>
+                    <p class="reserve_price">금액: <span></span></p>
                 </div>
                 <button class="submitBtn" type="button">예약하기</button>
             </div>
@@ -60,6 +83,8 @@
 </body>
 <script>
     $(document).ready(function () {
+        let userId = '<%= user.userId %>';
+        let userName = '<%= user.userName %>';
         const IMP = window.IMP;
         IMP.init('imp82624668');
 
@@ -71,18 +96,88 @@
         // 좌석 선택
         $(".seatBtn").on('click', function () {
             let selectedSeat = $(this).data('seat');
+            let selectedPrice = $(this).data('price');
             $('.reserve_seat span').text(selectedSeat);
+            $('.reserve_price span').text(selectedPrice);
         });
 
         // 결제 이벤트
         $(".submitBtn").on('click', function () {
-            if($('.reserve_time span').text() === "") {
-                alert('시간을 선택해주세요.');
-            }else if($('.reserve_seat span').text() === "") {
-                alert("좌석을 선택해주세요.");
+            let selectedTime = $('.reserve_time span').text();
+            let selectedSeat = $('.reserve_seat span').text();
+            let selectedPrice = $('.reserve_price span').text();
+            let seatStatus = $('.seatBtn').data('status');
+
+            if (!selectedTime || !selectedSeat || !selectedPrice) {
+                return alert("시간과 좌석을 모두 선택해주세요.");
+            }else if(seatStatus === '예약중') {
+                return alert("이미 선택된 좌석입니다.");
             }
 
+            // 좌석 예약상태 확인
+            $.ajax({
+                url: `/reservations?reservationTime=${selectedTime}&reservationSeat=${selectedSeat}`,
+                method: 'GET',
+                success: function(res) {
+                    if (res.available) {
+                        // 예약 가능
+                        // alert(res.message);
+                        requestPay(selectedTime, selectedSeat, selectedPrice); // 결제호출
+                    } else {
+                        // 예약 불가
+                        alert(res.message);
+                    }
+                },
+                error: function(xhr, status, err) {
+                    console.error('예약 상태 조회 중 오류가 발생했습니다:', err);
+                }
+            });
+
         })
+
+        function requestPay(time, seat, price) {
+            IMP.request_pay({
+                pg: 'kakaopay.TC0ONETIME',
+                pay_method: 'card',
+                merchant_uid: 'reservation_' + new Date().getTime(), // 주문번호
+                name: "티켓 예매", 
+                amount: price
+            }, function (rsp) {
+                if (rsp.success) {
+                    // 결제 성공 시
+                    $.ajax({
+                        url: '/payments',
+                        method: 'POST',
+                        contentType: 'application/json',
+                        dataType: 'json',
+                        data: JSON.stringify({
+                            imp_uid: rsp.imp_uid,
+                            merchant_uid: rsp.merchant_uid,
+                            paymentsName: rsp.name,
+                            userId: userId,
+                            userName: userName,
+                            reservationTime: time,
+                            reservationSeat: seat,
+                            reservationAmount: price
+                        }),
+                        success: function(res) {
+                            if (res.success) {
+                                alert(res.message);
+                                location.reload();
+                            } else {
+                                alert(res.message);
+                            }
+                        },
+                        error: function(xhr, status, err) {
+                            console.error('결제 처리 중 오류가 발생했습니다:', err);
+                        }
+                    });
+                } else {
+                    // 결제 실패 시
+                    alert(rsp.error_msg);
+                }
+            });
+        }
     });
 </script>
 </html>
