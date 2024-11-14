@@ -177,7 +177,6 @@ app.get('/index', async (req, res) => {
     }
     // 결제내역조회
     let allData = await db.collection('paymentdetails').find({}).toArray();
-    console.log(allData);
     res.render('index.ejs', {user, allData})
 });
 // 예약전 좌석상태 확인
@@ -190,10 +189,10 @@ app.get('/reservations', async (req, res) => {
         });
 
         if (!userInfo) {
-            // 예약 가능
+            // 예약가능
             res.json({available: true, message: '예약 가능'});
         } else {
-            // 예약 불가
+            // 예약불가
             res.json({available: false, message: '이미 예약된 좌석입니다.'});
         }
     } catch (e) {
@@ -203,15 +202,19 @@ app.get('/reservations', async (req, res) => {
 });
 // 결제
 app.post('/payments', async (req,res) => {
+    // 기존 db.client를 사용해 세션 시작
+    let mongoSession = db.client.startSession();
     try{
+        // 트랜잭션 시작
+        mongoSession.startTransaction();
         // 결제내역 조회
         let userInfo = await db.collection('paymentdetails').findOne({
             reservationTime: req.body.reservationTime, 
             reservationSeat: req.body.reservationSeat
-        });
+        }, {session: mongoSession});
 
         if(!userInfo) {
-            // 예약가능
+            // 예약가능, 결제내역추가
             await db.collection('paymentdetails').insertOne({
                 userId: req.user.userId,
                 userName: req.user.userName,
@@ -219,15 +222,22 @@ app.post('/payments', async (req,res) => {
                 reservationSeat: req.body.reservationSeat,
                 reservationAmount: parseInt(req.body.reservationAmount),
                 reservationStatus: '예약완료'
-            })
+            }, {session: mongoSession})
+            // 트랜잭션 커밋
+            await mongoSession.commitTransaction();
             res.json({success: true, message: '결제가 완료되었습니다.'});
         }else {
-            // 예약불가
+            // 예약불가시 트랜잭션 롤백
+            await mongoSession.abortTransaction();
             res.json({success: false, message: '이미 예약된 좌석입니다.'});
         }
     } catch(e){
         console.log(e);
+        // 에러 발생 시 트랜잭션 롤백
+        await mongoSession.abortTransaction();
         res.status(500).json({success: false, message: '서버 오류가 발생했습니다.'});
+    } finally{
+        mongoSession.endSession();
     }
 });
 

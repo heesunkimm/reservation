@@ -35,7 +35,7 @@
             <%  
                 let rows = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'];
                 let cols = 10;
-                <!-- let time = ['14:00', '16:00', '18:00']; -->
+                let time = ['14:00', '16:00', '18:00'];
             %>
 
             <div class="time_box">
@@ -121,7 +121,6 @@
                 success: function(res) {
                     if (res.available) {
                         // 예약 가능
-                        // alert(res.message);
                         requestPay(selectedTime, selectedSeat, selectedPrice); // 결제호출
                     } else {
                         // 예약 불가
@@ -166,6 +165,7 @@
                                 location.reload();
                             } else {
                                 alert(res.message);
+                                location.reload();
                             }
                         },
                         error: function(xhr, status, err) {
@@ -175,6 +175,7 @@
                 } else {
                     // 결제 실패 시
                     alert(rsp.error_msg);
+                    location.reload();
                 }
             });
         }
