@@ -7,6 +7,11 @@ const LocalStrategy = require('passport-local');
 // connect-mongo 추가
 const MongoStore = require('connect-mongo');
 const app = express();
+// socket.io 추가
+const http = require('http');
+const socketIo = require('socket.io');
+const server = http.createServer(app); // 기존 express 앱을 http 서버로 감싸서 사용
+const io = socketIo(server); // socket.io 서버 설정
 // 몽고 DB 라이브러리 변수선언
 const { MongoClient } = require('mongodb');
 // 환경변수 파일 사용하기위해 선언
@@ -55,11 +60,36 @@ app.use(passport.session());
 let db
 const url = process.env.DB_URL
 const { ObjectId } = require('mongodb');
+
+let SeatStatus = {}; // 좌석상태를 임시로 담아둘 변수
+// socket.io 연결
+io.on('connection', (socket) => {
+    console.log('클라이언트 연결');
+    
+    // 클라이언트 연결시 좌석 상태 전송
+    socket.emit('seatsStatus', SeatStatus);
+    // 좌석예약 상태 업데이트
+    socket.on('seatStatusUpdate', (data) => {
+        // 클라이언트로부터 받은 좌석 상태 업데이트
+        SeatStatus[data.selectedSeat] = data.selectedStatus;
+
+        // 변경된 좌석 상태를 모든 클라이언트에게 전달
+        io.emit('seatStatusUpdate', {
+            selectedSeat: data.selectedSeat,
+            selectedStatus: data.selectedStatus
+        });
+    });
+
+    socket.on('disconnect', () => {
+        console.log('클라이언트 연결종료');
+    });
+});
+
 new MongoClient(url).connect().then((client)=>{
     console.log('DB연결성공')
     db = client.db('project')
     // 서버연결
-    app.listen(process.env.PORT, () => {
+    server.listen(process.env.PORT, () => {
     console.log('서버접속중');
     });
 }).catch((err)=>{
@@ -165,6 +195,7 @@ app.post('/join', async (req, res) => {
         }
     } catch(e){
         console.log(e);
+        res.status(500).json({available: false, message: '서버 오류가 발생했습니다.'});
     }
 })
 
@@ -201,36 +232,42 @@ app.get('/reservations', async (req, res) => {
     }
 });
 // 결제
-app.post('/payments', async (req,res) => {
+app.post('/reservations', async (req,res) => {
     // 기존 db.client를 사용해 세션 시작
     let mongoSession = db.client.startSession();
     try{
         // 트랜잭션 시작
         mongoSession.startTransaction();
-        // 결제내역 조회
-        let userInfo = await db.collection('paymentdetails').findOne({
+        // 결제내역을 조회
+        let seatInfo = await db.collection('paymentdetails').findOne({
             reservationTime: req.body.reservationTime, 
             reservationSeat: req.body.reservationSeat
         }, {session: mongoSession});
-
-        if(!userInfo) {
-            // 예약가능, 결제내역추가
-            await db.collection('paymentdetails').insertOne({
-                userId: req.user.userId,
-                userName: req.user.userName,
-                reservationTime: req.body.reservationTime,
-                reservationSeat: req.body.reservationSeat,
-                reservationAmount: parseInt(req.body.reservationAmount),
-                reservationStatus: '예약완료'
-            }, {session: mongoSession})
-            // 트랜잭션 커밋
-            await mongoSession.commitTransaction();
-            res.json({success: true, message: '결제가 완료되었습니다.'});
-        }else {
-            // 예약불가시 트랜잭션 롤백
+        // 좌석의 예약 가능 여부 확인
+        if (seatInfo) {
+            // 이미 예약된 좌석일 경우
             await mongoSession.abortTransaction();
-            res.json({success: false, message: '이미 예약된 좌석입니다.'});
+            return res.json({success: false, message: '이미 예약된 좌석입니다.'});
         }
+
+        // 예약가능시 결제내역추가
+        await db.collection('paymentdetails').insertOne({
+            userId: req.user.userId,
+            userName: req.user.userName,
+            reservationTime: req.body.reservationTime,
+            reservationSeat: req.body.reservationSeat,
+            reservationAmount: parseInt(req.body.reservationAmount),
+            reservationStatus: '예약완료'
+        }, {session: mongoSession})
+        // 트랜잭션 커밋
+        await mongoSession.commitTransaction();
+        // 실시간으로 좌석상태 업데이트
+        io.emit('seatStatusUpdate', {
+            selectedSeat: req.body.reservationSeat,
+            selectedStatus: '예약완료'
+        })
+        res.json({success: true, message: '결제가 완료되었습니다.'});
+        
     } catch(e){
         console.log(e);
         // 에러 발생 시 트랜잭션 롤백
