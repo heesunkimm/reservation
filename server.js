@@ -304,6 +304,25 @@ app.get('/reservations/details', async (req, res) => {
     }
 })
 
+app.delete('/reservations/delete', async (req, res) => {
+    try {
+        let result = await db.collection('paymentdetails').deleteOne({
+            userId: req.user.userId,
+            reservationTime: req.query.reservationTime,
+            reservationSeat: req.query.reservationSeat
+        })
+
+        if (result.deletedCount > 0) {
+            res.json({success: true, message: "예약이 취소되었습니다."});
+        } else {
+            res.json({success: false, message: "취소할 예약이 없습니다."});
+        }
+    } catch (e) {
+        console.log(e);
+        res.status(500).json({success: false, message: '서버 오류가 발생했습니다.'});
+    }
+})
+
 // logout
 app.get('/logout', (req, res) => {
     try{

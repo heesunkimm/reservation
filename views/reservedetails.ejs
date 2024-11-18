@@ -19,11 +19,38 @@
                         <p>예약자: <%= items.userName %></p>
                         <p>예약날짜/좌석: <%= items.reservationTime %> / <%= items.reservationSeat %></p>
                         <p>예약금액: <%= items.reservationAmount %></p>
-                        <p><%= items.reservationStatus %></p>
+                        <div class="btn_box">
+                            <button class="delBtn" type="button" data-time="<%= items.reservationTime %>" data-seat="<%= items.reservationSeat %>">예약취소</button>
+                        </div>
                     </li>
                 <% }) %>
             </ul>
         </div>
     </section>
 </body>
+<script>
+    $(document).ready(function () {
+        $(".delBtn").on('click', function () {
+            let delBtn = $(this);
+            let delTime = $(this).data('time');
+            let delSeat = $(this).data('seat');
+
+            $.ajax({
+                url: `/reservations/delete?reservationTime=${delTime}&reservationSeat=${delSeat}`, 
+                method: "DELETE",
+                success: function(res) {
+                    if(res.success){
+                        delBtn.closest("li").remove();
+                        alert(res.message);
+                    }else{
+                        alert(res.message);
+                    }
+                },
+                error: function(xhr, status, err) {
+                    console.error('예약 취소 중 오류가 발생했습니다:', err);
+                }
+            });
+        });
+    });
+</script>
 </html>

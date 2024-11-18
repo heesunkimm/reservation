@@ -48,3 +48,5 @@ header .nav li a:hover {color: #F0A8D0;}
 .reserve_sec .inner_wrap ul li {padding: 6px 0;}
 .reserve_sec .inner_wrap ul li p + p {margin-top: 4px;}
 .reserve_sec .inner_wrap ul li p {font-size: 18px;}
+.reserve_sec .inner_wrap ul li .btn_box {text-align: right;}
+.reserve_sec .inner_wrap ul li .btn_box button {padding: 2px 6px; font-size: 17px;}
