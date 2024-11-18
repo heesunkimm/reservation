@@ -12,6 +12,13 @@ const http = require('http');
 const socketIo = require('socket.io');
 const server = http.createServer(app); // 기존 express 앱을 http 서버로 감싸서 사용
 const io = socketIo(server); // socket.io 서버 설정
+// Redis 변수 선언
+const Redis = require('ioredis');
+// Redis 클라이언트 생성
+const redis = new Redis({
+    host: process.env.HOST,
+    port: process.env.PORT
+});
 // 몽고 DB 라이브러리 변수선언
 const { MongoClient } = require('mongodb');
 // 환경변수 파일 사용하기위해 선언
@@ -60,6 +67,15 @@ app.use(passport.session());
 let db
 const url = process.env.DB_URL
 const { ObjectId } = require('mongodb');
+
+redis.on('connect', () => {
+  console.log('Redis 연결 성공');
+});
+
+redis.on('error', (err) => {
+  console.error('Redis 연결 오류:', err.message);
+});
+
 
 let SeatStatus = {}; // 좌석상태를 임시로 담아둘 변수
 // socket.io 연결
@@ -277,6 +293,16 @@ app.post('/reservations', async (req,res) => {
         mongoSession.endSession();
     }
 });
+
+app.get('/reservations/details', async (req, res) => {
+    try{
+        let result = await db.collection('paymentdetails').find({userId: req.user.userId}).toArray();
+        res.render('reservedetails.ejs', {result: result})
+    }catch(e) {
+        console.log(e);
+        res.status(500).json({success: false, message: '서버 오류가 발생했습니다.'});
+    }
+})
 
 // logout
 app.get('/logout', (req, res) => {

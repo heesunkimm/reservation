@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Reservation System</title>
+	<link rel="stylesheet" type="text/css" href="/reset.css">
+	<link rel="stylesheet" type="text/css" href="/style.css">
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+</head>
+<body>
+    <%- include('header.ejs') %>
+    <section class="reserve_sec content">
+        <div class="inner_wrap">
+            <p>예약내역</p>
+            <ul>
+                <% result.forEach(items => { %>
+                    <li>
+                        <p>예약자: <%= items.userName %></p>
+                        <p>예약날짜/좌석: <%= items.reservationTime %> / <%= items.reservationSeat %></p>
+                        <p>예약금액: <%= items.reservationAmount %></p>
+                        <p><%= items.reservationStatus %></p>
+                    </li>
+                <% }) %>
+            </ul>
+        </div>
+    </section>
+</body>
+</html>

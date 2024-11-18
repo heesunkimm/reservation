@@ -14,13 +14,7 @@
     <script src="/socket.io/socket.io.js"></script> 
 </head>
 <body>
-    <header>
-        <ul class="nav">
-            <li><a href="javascript:;">예약하기</a></li>
-            <li><a href="javascript:;">예약내역</a></li>
-            <li><a href="/logout">로그아웃</a></li>
-        </ul>
-    </header>
+    <%- include('header.ejs') %>
     <section class="index_sec content">
         <div class="status_box">
             <% let status = ['예약가능', '예약중', '예약완료']; %>

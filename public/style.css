@@ -39,3 +39,12 @@ header .nav li a:hover {color: #F0A8D0;}
 .index_sec .submit_box .reserve_box p + p {margin-top: 6px;}
 .index_sec .submit_box .reserve_box p {font-size: 18px;}
 .index_sec .submit_box button {padding: 2px 10px; font-size: 18px;}
+
+/* reservedetails */
+.reserve_sec .inner_wrap {width: 800px; margin: 0 auto;}
+.reserve_sec .inner_wrap > p {font-size: 24px;}
+.reserve_sec .inner_wrap ul {margin-top: 20px;}
+.reserve_sec .inner_wrap ul li + li {border-top: 1px solid #ccc;}
+.reserve_sec .inner_wrap ul li {padding: 6px 0;}
+.reserve_sec .inner_wrap ul li p + p {margin-top: 4px;}
+.reserve_sec .inner_wrap ul li p {font-size: 18px;}
