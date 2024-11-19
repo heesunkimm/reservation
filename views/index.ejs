@@ -17,7 +17,7 @@
     <%- include('header.ejs') %>
     <section class="index_sec content">
         <div class="status_box">
-            <% let status = ['예약가능', '예약중', '예약완료']; %>
+            <% let status = ['예약가능', '예약완료']; %>
             <% status.forEach(status => { %>
                 <div>
                     <p><%= status %></p>
@@ -108,12 +108,20 @@
         // 좌석 선택
         $(".seatBtn").on('click', function () {
             let selectedSeat = $(this).data('seat');
-            let selectedPrice = $(this).data('price');
             let selectedStatus = $(this).data('status');
-            
+
+            // if (selectedStatus === '예약완료') {
+            //     alert('이미 예약된 좌석입니다.');
+            //     return;
+            // } else if (selectedStatus === '예약중') {
+            //     alert('이미 다른 사용자가 예약 중입니다.');
+            //     return;
+            // }
+
+            // 좌석 및 금액 정보 표시
+            let selectedPrice = $(this).data('price');
             $('.reserve_seat span').text(selectedSeat);
             $('.reserve_price span').text(selectedPrice);
-
         });
 
         // 결제 이벤트
@@ -121,48 +129,35 @@
             let selectedTime = $('.reserve_time span').text();
             let selectedSeat = $('.reserve_seat span').text();
             let selectedPrice = $('.reserve_price span').text();
-            let selectedStatus = $('.seatBtn').data('status');
 
             if (!selectedTime || !selectedSeat || !selectedPrice) {
-                return alert("시간과 좌석을 모두 선택해주세요.");
-            }else if(selectedStatus === '예약중') {
-                return alert("이미 선택된 좌석입니다.");
+                return alert('시간과 좌석을 선택해주세요.');
             }
 
-            // 좌석상태 변경
-            socket.emit('seatStatusUpdate', {
-                selectedSeat: selectedSeat,
-                selectedStatus: '예약중'
-            });
-            // 좌석 상태 변경
-            let seatBtn = $(`[data-seat="${selectedSeat}"]`);
-            seatBtn.prop('disabled', true).attr('data-status', '예약중');
-            
-            // 좌석 예약상태 확인
+            // 예약 가능 여부 확인
             $.ajax({
-                url: `/reservations?reservationTime=${selectedTime}&reservationSeat=${selectedSeat}`,
-                method: 'GET',
+                url: `/reservations/status?reservationTime=${selectedTime}&reservationSeat=${selectedSeat}`,
+                method: 'get',
                 success: function(res) {
-                    if (res.available) {
+                    if (res.success) {
                         // 예약 가능
-                        requestPay(selectedTime, selectedSeat, selectedPrice); // 결제호출
+                        requestPay(selectedTime, selectedSeat, selectedPrice);
                     } else {
-                        // 예약 불가
+                        // 예약 불가능
                         alert(res.message);
                     }
                 },
                 error: function(xhr, status, err) {
-                    console.error('예약 상태 조회 중 오류가 발생했습니다:', err);
+                    console.error('예약 상태 확인 중 오류가 발생했습니다:', err);
                 }
             });
-
         });
 
         function requestPay(time, seat, price) {
             IMP.request_pay({
                 pg: 'kakaopay.TC0ONETIME',
                 pay_method: 'card',
-                merchant_uid: 'reservation_' + new Date().getTime(), // 주문번호
+                merchant_uid: 'reservation_' + new Date().getTime(),
                 name: "티켓 예매", 
                 amount: price
             }, function (rsp) {
@@ -193,6 +188,7 @@
                                 })
                                 location.reload();
                             } else {
+                                // 결제 불가
                                 alert(res.message);
                                 location.reload();
                             }
